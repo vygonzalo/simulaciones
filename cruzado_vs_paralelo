@@ -1,0 +1,54 @@
+# Instalar y cargar las librerías necesarias
+install.packages("pwr")
+install.packages("MASS")
+library(pwr)
+library(MASS)
+
+# Definir los parámetros de la simulación
+alpha <- 0.05       # Nivel de significación
+power <- 0.8        # Potencia
+effect_size <- 0.5  # Tamaño del efecto (d de Cohen)
+
+# Calcular el tamaño de muestra necesario para un ECA de brazos paralelos
+sample_size_parallel <- pwr.t.test(d = effect_size, sig.level = alpha, power = power, 
+                                   type = "two.sample", alternative = "two.sided")$n
+sample_size_parallel <- ceiling(sample_size_parallel)
+sample_size_parallel
+
+# Calcular el tamaño de muestra necesario para un ensayo cruzado
+sample_size_cross <- pwr.t.test(d = effect_size, sig.level = alpha, power = power, 
+                                type = "paired", alternative = "two.sided")$n
+sample_size_cross <- ceiling(sample_size_cross)
+sample_size_cross
+
+# Realizar una simulación para demostrar la diferencia
+set.seed(123) # Para reproducibilidad
+
+# Función para simular un ECA de brazos paralelos
+simulate_parallel <- function(n, effect_size) {
+  group1 <- rnorm(n, mean = 0, sd = 1)
+  group2 <- rnorm(n, mean = effect_size, sd = 1)
+  t.test(group1, group2)$p.value
+}
+
+# Función para simular un ensayo cruzado
+simulate_cross <- function(n, effect_size) {
+  period1 <- rnorm(n, mean = 0, sd = 1)
+  period2 <- period1 + rnorm(n, mean = effect_size, sd = 1)
+  t.test(period1, period2, paired = TRUE)$p.value
+}
+
+# Número de simulaciones
+n_sim <- 1000
+
+# Simulaciones para ECA de brazos paralelos
+p_values_parallel <- replicate(n_sim, simulate_parallel(sample_size_parallel, effect_size))
+
+# Simulaciones para ensayo cruzado
+p_values_cross <- replicate(n_sim, simulate_cross(sample_size_cross, effect_size))
+
+# Proporción de resultados significativos
+power_parallel <- mean(p_values_parallel < alpha)
+power_cross <- mean(p_values_cross < alpha)
+
+list(power_parallel = power_parallel, power_cross = power_cross)
